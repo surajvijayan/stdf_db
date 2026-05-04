@@ -10,7 +10,7 @@ The application follows a manager-worker architectural pattern, centered around 
 - **`ACTIVE_PARTS` (Singleton)**: The central manager. It handles configuration loading (via `libconfig++`), manages the global state (such as the STDF ID), and orchestrates the lifecycle of worker threads. It performs an initial indexing pass of the STDF file to enable parallel processing.
 - **`THREAD_PROCESS` (Worker)**: Encapsulates the logic for processing a specific segment of an STDF file. Each worker maintains its own database connection and processes STDF records into relational data.
 - **`stdf_cond` (Condition Parser)**: A logic module used to parse environmental test conditions (e.g., Temperature, Voltage) from `DTR` (Data Text Records) using optimized regex patterns. It ensures conditions are normalized and deduplicated in the database via the `process_cond_group` stored procedure.
-- **`libstdf`**: A third-party library used for low-level binary parsing of STDF record structures.
+- **`libstdf`**: A third-party library used for low-level binary parsing of STDF record structures (https://freestdf.sourceforge.io/doxygen/).
 
 ## 3. Data Processing Pipeline
 
