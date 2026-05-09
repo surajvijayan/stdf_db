@@ -1,4 +1,5 @@
 *.o
+*.so
 src/cond_simulate
 src/stdf_db
 
