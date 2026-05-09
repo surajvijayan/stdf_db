@@ -541,4 +541,12 @@ start_proc:BEGIN
     COMMIT;
     DROP TEMPORARY TABLE IF EXISTS temp_cond_tokens;
 END$$
+ALTER TABLE ptr ADD INDEX idx_ptr_test (stdf_id, test_num);
+ALTER TABLE ptr ADD INDEX idx_ptr_test_cond (stdf_id, test_num, cond_group_id);
+ALTER TABLE ptr ADD INDEX idx_ptr_test_site (stdf_id, test_num, site_num);
+ALTER TABLE ptr ADD INDEX idx_ptr_result (stdf_id, test_num, result);
+
+ALTER TABLE prr ADD INDEX idx_prr_bins (stdf_id, hard_bin, soft_bin);
+ALTER TABLE prr ADD INDEX idx_prr_xy (stdf_id, x_coord, y_coord);
+ALTER TABLE prr ADD INDEX idx_prr_part_id (stdf_id, part_id);
 DELIMITER ;
