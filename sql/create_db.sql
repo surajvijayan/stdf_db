@@ -402,6 +402,7 @@ CREATE TABLE IF NOT EXISTS cond_group (
   PRIMARY KEY (`id`),
   INDEX `cond_idx_idx` (`cond_group_id`),
   INDEX `cond_master_key` (`cond_master_id`),
+  UNIQUE INDEX `uniq_group_cond` (`cond_group_id`, `cond_master_id`),
   FOREIGN KEY (`cond_group_id`) REFERENCES `cond_group_master` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`cond_master_id`) REFERENCES `cond_master` (`id`) ON DELETE CASCADE ON UPDATE CASCADE)
   ENGINE = InnoDB
@@ -430,87 +431,103 @@ CREATE PROCEDURE `process_cond_group`(
 )
 SQL SECURITY INVOKER
 start_proc:BEGIN
-    -- This procedure manages normalized condition grouping.
     DECLARE output_string, token_name, token_value VARCHAR(100);
     DECLARE m_cond_group_name TEXT;
-    DECLARE first BOOL DEFAULT TRUE;
     DECLARE counter INT DEFAULT 1;
     DECLARE cond_cnt INT DEFAULT 0;
     DECLARE m_group_id INT;
     DECLARE m_where_clause TEXT DEFAULT '';
-    DECLARE m_count INT;
-    DECLARE not_found INT DEFAULT 0;
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
-        -- Clean up temp table on error
         DROP TEMPORARY TABLE IF EXISTS temp_cond_tokens;
         SET out_status = 'FAILURE. SQL Exception.';
     END;
-    
-    DECLARE CONTINUE HANDLER FOR 1329 SET not_found = 1;
-
-    -- 1. Parse string and count tokens
-    SET first = TRUE;
-    SET m_cond_group_name = '';
 
     CREATE TEMPORARY TABLE IF NOT EXISTS temp_cond_tokens (
         t_name VARCHAR(100),
         t_value VARCHAR(100),
-        t_pair VARCHAR(201)
+        t_pair VARCHAR(201),
+        UNIQUE KEY uniq_pair (t_name, t_value)
     ) ENGINE=MEMORY;
-    DELETE FROM temp_cond_tokens;
+
+    TRUNCATE TABLE temp_cond_tokens;
 
     loop_1: WHILE counter <= LENGTH(in_cond_str) DO
         IF LOCATE(',', in_cond_str, counter) = 0 THEN
             SET output_string = SUBSTRING(in_cond_str, counter);
             SET counter = LENGTH(in_cond_str) + 1;
         ELSE
-            SET output_string = SUBSTRING(in_cond_str, counter, LOCATE(',', in_cond_str, counter) - counter);
+            SET output_string = SUBSTRING(
+                in_cond_str,
+                counter,
+                LOCATE(',', in_cond_str, counter) - counter
+            );
             SET counter = counter + LENGTH(output_string) + 1;
         END IF;
 
-        SET token_name = TRIM(REGEXP_REPLACE(output_string, '(.*)=.*', '$1'));
+        SET token_name  = TRIM(REGEXP_REPLACE(output_string, '(.*)=.*', '$1'));
         SET token_value = TRIM(REGEXP_REPLACE(output_string, '.*=(.*)', '$1'));
 
         IF token_name = token_value OR token_name = '' THEN
             ITERATE loop_1;
         END IF;
 
-        -- Escape tokens for dynamic SQL safety
-        SET token_name = REPLACE(token_name, "'", "''");
+        SET token_name  = REPLACE(token_name, "'", "''");
         SET token_value = REPLACE(token_value, "'", "''");
 
-        INSERT INTO temp_cond_tokens VALUES (token_name, token_value, CONCAT(token_name, ':', token_value));
-
-        IF first THEN
-            SET m_cond_group_name = CONCAT(token_name, ':', token_value);
-            SET m_where_clause = CONCAT("cond = ", QUOTE(CONCAT(token_name, ':', token_value)));
-        ELSE
-            SET m_cond_group_name = CONCAT(m_cond_group_name, ',', token_name, ':', token_value);
-            SET m_where_clause = CONCAT(m_where_clause, " OR cond = ", QUOTE(CONCAT(token_name, ':', token_value)));
-        END IF;
-        
-        SET first = FALSE;
-        SET cond_cnt = cond_cnt + 1;
+        INSERT IGNORE INTO temp_cond_tokens
+        VALUES (
+            token_name,
+            token_value,
+            CONCAT(token_name, ':', token_value)
+        );
     END WHILE;
 
-    IF first THEN
+    SELECT COUNT(*)
+    INTO cond_cnt
+    FROM temp_cond_tokens;
+
+    IF cond_cnt = 0 THEN
         SET out_cond_group_id = 0;
         SET out_status = 'FAILURE. Invalid input.';
         DROP TEMPORARY TABLE IF EXISTS temp_cond_tokens;
         LEAVE start_proc;
     END IF;
 
-    -- Refined search: Must match EXACT number of conditions and ALL condition strings
-    SET @sql_str = CONCAT('SELECT COND_GROUP_ID INTO @m_group_id FROM cond_view WHERE COND_GROUP_ID IN (',
-                          'SELECT COND_GROUP_ID FROM cond_view GROUP BY COND_GROUP_ID HAVING COUNT(*) = ', cond_cnt, 
-                          ') AND (', m_where_clause, ') GROUP BY COND_GROUP_ID HAVING COUNT(*) = ', cond_cnt, ' LIMIT 1');
+    SELECT GROUP_CONCAT(
+        t_pair ORDER BY t_name, t_value SEPARATOR ','
+    )
+    INTO m_cond_group_name
+    FROM temp_cond_tokens;
+
+    SELECT GROUP_CONCAT(
+        CONCAT('cond = ', QUOTE(t_pair))
+        ORDER BY t_name, t_value
+        SEPARATOR ' OR '
+    )
+    INTO m_where_clause
+    FROM temp_cond_tokens;
+
+    SET @sql_str = CONCAT(
+        'SELECT COND_GROUP_ID INTO @m_group_id ',
+        'FROM cond_view ',
+        'WHERE COND_GROUP_ID IN (',
+            'SELECT COND_GROUP_ID ',
+            'FROM cond_view ',
+            'GROUP BY COND_GROUP_ID ',
+            'HAVING COUNT(*) = ', cond_cnt,
+        ') AND (', m_where_clause, ') ',
+        'GROUP BY COND_GROUP_ID ',
+        'HAVING COUNT(*) = ', cond_cnt,
+        ' LIMIT 1'
+    );
 
     START TRANSACTION;
-    
+
     SET @m_group_id = NULL;
+
     PREPARE stmt FROM @sql_str;
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
@@ -519,21 +536,37 @@ start_proc:BEGIN
         SET out_cond_group_id = @m_group_id;
         SET out_status = 'SUCCESS. Found existing.';
     ELSE
-        -- 2. Create new group
-        INSERT INTO cond_group_master (cond_group_name) VALUES (m_cond_group_name);
-        SET m_group_id = LAST_INSERT_ID();
-        
-        -- Insert missing masters
-        INSERT IGNORE INTO cond_master (cond_name, cond_value, cond_description)
-        SELECT t_name, t_value, 'Auto-added via automation'
+        INSERT IGNORE INTO cond_group_master (cond_group_name)
+        VALUES (m_cond_group_name);
+
+        SELECT id
+        INTO m_group_id
+        FROM cond_group_master
+        WHERE cond_group_name = m_cond_group_name;
+
+        INSERT IGNORE INTO cond_master (
+            cond_name,
+            cond_value,
+            cond_description
+        )
+        SELECT
+            t_name,
+            t_value,
+            'Auto-added via automation'
         FROM temp_cond_tokens;
 
-        -- Link group to masters
-        INSERT INTO cond_group (cond_group_id, cond_master_id)
-        SELECT m_group_id, cm.id
+        INSERT IGNORE INTO cond_group (
+            cond_group_id,
+            cond_master_id
+        )
+        SELECT
+            m_group_id,
+            cm.id
         FROM temp_cond_tokens t
-        JOIN cond_master cm ON t.t_name = cm.cond_name AND t.t_value = cm.cond_value;
-        
+        JOIN cond_master cm
+          ON t.t_name = cm.cond_name
+         AND t.t_value = cm.cond_value;
+
         SET out_cond_group_id = m_group_id;
         SET out_status = 'SUCCESS. Created new.';
     END IF;
@@ -541,6 +574,7 @@ start_proc:BEGIN
     COMMIT;
     DROP TEMPORARY TABLE IF EXISTS temp_cond_tokens;
 END$$
+DELIMITER ;
 ALTER TABLE ptr ADD INDEX idx_ptr_test (stdf_id, test_num);
 ALTER TABLE ptr ADD INDEX idx_ptr_test_cond (stdf_id, test_num, cond_group_id);
 ALTER TABLE ptr ADD INDEX idx_ptr_test_site (stdf_id, test_num, site_num);
@@ -549,4 +583,8 @@ ALTER TABLE ptr ADD INDEX idx_ptr_result (stdf_id, test_num, result);
 ALTER TABLE prr ADD INDEX idx_prr_bins (stdf_id, hard_bin, soft_bin);
 ALTER TABLE prr ADD INDEX idx_prr_xy (stdf_id, x_coord, y_coord);
 ALTER TABLE prr ADD INDEX idx_prr_part_id (stdf_id, part_id);
-DELIMITER ;
+ALTER TABLE ptr ADD CONSTRAINT fk_ptr_cond_group FOREIGN KEY (cond_group_id) REFERENCES cond_group_master(id);
+ALTER TABLE ftr ADD CONSTRAINT fk_ftr_cond_group FOREIGN KEY (cond_group_id) REFERENCES cond_group_master(id);
+ALTER TABLE ptr ADD CONSTRAINT fk_ptr_stdf FOREIGN KEY (stdf_id) REFERENCES mir(id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE ftr ADD CONSTRAINT fk_ftr_stdf FOREIGN KEY (stdf_id) REFERENCES mir(id) ON DELETE CASCADE ON UPDATE CASCADE;
+
