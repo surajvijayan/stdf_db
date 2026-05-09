@@ -3,7 +3,6 @@
 Developed by Suraj Vijayan
 
 Initial release.: Feb. 15th. 2020
-Latest Update   : May 2026
 
 ## Overview
 `stdf_db` is an industrial-grade C++ utility engineered to ingest binary Standard Test Data Format (STDF) files into MySQL/MariaDB. It is optimized for high-throughput semiconductor manufacturing environments, utilizing parallel binary parsing and multi-row database batching to outperform standard commercial yield management systems.
