@@ -582,7 +582,15 @@ int thread_process::update_ptr(vector<TEST_DATA> *v_ptr, unsigned int t_prr_id, 
         pstmt->setUInt(param_idx++, itr->ptr.PARM_FLG);
         
         // Safety: Scrub NaN/Inf to prevent SQL ingestion errors
-        pstmt->setDouble(param_idx++, (std::isnan(itr->result) || std::isinf(itr->result) ? 0.0 : itr->result));
+        //pstmt->setDouble(param_idx++, (std::isnan(itr->result) || std::isinf(itr->result) ? NULL : itr->result));
+        if (std::isnan(itr->result) || std::isinf(itr->result))
+        {
+            pstmt->setNull(param_idx++, sql::DataType::DOUBLE);
+        }
+        else
+        {
+            pstmt->setDouble(param_idx++, itr->result);
+        }
 
         pstmt->setString(param_idx++, itr->test_txt);
         pstmt->setString(param_idx++, to_string(itr->ptr.OPT_FLAG));
