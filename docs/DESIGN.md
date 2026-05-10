@@ -78,8 +78,17 @@ CALL process_cond_group('temp=25,voltage=3.3', @group_id, @status);
 
 This ensures conditions are normalized and linked to test results without redundant storage.
 
-## 5. Development Utilities
-### 5.1 `cond_simulate.cpp`
+## 5. Build System
+The project is now integrated with GNU Autotools for portable configuration and build generation.
+
+- `configure.ac` defines the project name, version, compiler flags, and required libraries.
+- `Makefile.am` at the repository root coordinates the build by invoking `src/Makefile` in the source subtree.
+- `src/Makefile.am` defines the `stdf_db` executable, `cond_simulate` utility, and installation targets.
+- Running `autoreconf -fiv` regenerates `configure`, `config.status`, and the `Makefile.in` templates.
+- This approach supports cross-platform portability and simplifies dependency discovery for `libstdf`, `libconfig++`, `mysql-connector-cpp`, `OpenSSL`, and `pthread`.
+
+## 6. Development Utilities
+### 6.1 `cond_simulate.cpp`
 A standalone sandbox utility used to validate regex patterns in `stdf_cond.cpp`. It allows developers to verify that new STDF logging formats are correctly parsed into canonical condition strings without requiring a full database or file system environment.
 
 ## 6. Performance Optimizations (The "Secret Sauce")

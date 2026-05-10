@@ -40,12 +40,15 @@ A unique feature of this tool is its ability to parse **DTR (Data Text Records)*
 - **Pthreads:** For multi-threaded orchestration.
 
 ## Building
-The project uses a Makefile for compilation. Ensure dependencies are installed, then run:
+The project uses GNU autotools for portable builds. The root directory contains `configure.ac` and `Makefile.am`, and `src/Makefile.am` defines the source build targets. Ensure dependencies are installed, then run:
 ```bash
-cd src
+autoreconf -fiv
+./configure
 make
+make install  # optional
 ```
-This builds the main `stdf_db` executable and the `cond_simulate` utility.
+`make install` installs binaries and supporting files to the configured prefix, which defaults to `/usr/local` unless overridden with `./configure --prefix=/your/path`.
+This detects libraries automatically and builds the `stdf_db` executable and `cond_simulate` utility.
 
 ## Configuration (`.cfg`)
 Settings are managed via `stdf_db.cfg`, allowing for record skipping, test filtering, and thread limit adjustments.
