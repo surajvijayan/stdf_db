@@ -51,7 +51,33 @@ make install  # optional
 This detects libraries automatically and builds the `stdf_db` executable and `cond_simulate` utility.
 
 ## Configuration (`.cfg`)
-Settings are managed via `stdf_db.cfg`, allowing for record skipping, test filtering, and thread limit adjustments.
+`stdf_db` reads a libconfig-style configuration file, for example `src/stdf_db.cfg`. Pass the config file path as the first argument:
+```bash
+./stdf_db src/stdf_db.cfg <stdf_file>
+```
+
+Key sections in `stdf_db.cfg`:
+- `site_id`: numeric site id. This should be setup in the site_master table.
+- `verbose`: log verbosity level (0 = quiet, 2 = debug).
+- `validate_stdf`: if set to `1`, the application performs a pre-flight STDF validation pass.
+- `max_parts_per_thread`: number of PIR parts assigned to each worker thread.
+- `max_threads_limit`: upper limit on worker thread count.
+- `use_threads`: enables parallel ingestion when set to `1`.
+
+Database connection settings live under the `mysql` block:
+- `mysql_server`
+- `mysql_user`
+- `mysql_pass`
+- `mysql_db`
+These values may be overridden by environment variables for automation and security.
+
+Test-record controls are defined under `test_rec`:
+- `ignore_passed_ptr`: skip passing parametric records.
+- `ignore_passed_ftr`: skip passing functional records.
+- `skip_rec_types`: array of STDF record names to ignore, such as `REC_PLR` or `REC_DTR`.
+- `filter_parametric_tests`: list of test-name prefixes to include for PTR ingestion.
+
+This configuration enables flexible filtering, selective record loading, and tuned threading behavior for high-volume STDF ingestion.
 
 ## Usage
 ```bash
