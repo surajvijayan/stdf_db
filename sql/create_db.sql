@@ -13,7 +13,6 @@
 -- limitations under the License.
 
 -- STDF Database Schema for MySQL/MariaDB
--- Generated based on stdf_db application source code
 
 CREATE DATABASE IF NOT EXISTS stdf_db;
 USE stdf_db;
