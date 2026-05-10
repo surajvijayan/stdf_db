@@ -1,6 +1,5 @@
 /*
  * @file is_valid_stdf.cpp
- */
  * Released under the BSD license.  For more information,
  * please see: http://opensource.org/licenses/bsd-license.php
  *
