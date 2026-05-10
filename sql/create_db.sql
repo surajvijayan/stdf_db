@@ -445,6 +445,9 @@ CREATE PROCEDURE `process_cond_group`(
 )
 SQL SECURITY INVOKER
 start_proc:BEGIN
+-- This procedure takes in a COND string extracted from an STDF file.
+-- This string will be broken up into COND tokens and updated to cond_master table.
+-- Every unique COND_NAME + COND_VALUE will have an entry in COND master table.
     DECLARE output_string, token_name, token_value VARCHAR(100);
     DECLARE m_cond_group_name TEXT;
     DECLARE counter INT DEFAULT 1;
@@ -512,36 +515,24 @@ start_proc:BEGIN
 
     SELECT GROUP_CONCAT(
         t_pair ORDER BY t_name, t_value SEPARATOR ','
-    )
-    INTO m_cond_group_name
-    FROM temp_cond_tokens;
+    ) INTO m_cond_group_name FROM temp_cond_tokens;
 
     SELECT GROUP_CONCAT(
-        CONCAT('cond = ', QUOTE(t_pair))
+        CONCAT('COND = ', QUOTE(t_pair))
         ORDER BY t_name, t_value
         SEPARATOR ' OR '
-    )
-    INTO m_where_clause
-    FROM temp_cond_tokens;
+    ) INTO m_where_clause FROM temp_cond_tokens;
 
     SET @sql_str = CONCAT(
-        'SELECT COND_GROUP_ID INTO @m_group_id ',
-        'FROM cond_view ',
-        'WHERE COND_GROUP_ID IN (',
-            'SELECT COND_GROUP_ID ',
-            'FROM cond_view ',
-            'GROUP BY COND_GROUP_ID ',
-            'HAVING COUNT(*) = ', cond_cnt,
+        'SELECT COND_GROUP_ID INTO @m_group_id FROM cond_view WHERE COND_GROUP_ID IN (',
+            'SELECT COND_GROUP_ID FROM cond_view GROUP BY COND_GROUP_ID HAVING COUNT(*) = ', cond_cnt,
         ') AND (', m_where_clause, ') ',
-        'GROUP BY COND_GROUP_ID ',
-        'HAVING COUNT(*) = ', cond_cnt,
+        'GROUP BY COND_GROUP_ID HAVING COUNT(*) = ', cond_cnt,
         ' LIMIT 1'
     );
 
     START TRANSACTION;
-
     SET @m_group_id = NULL;
-
     PREPARE stmt FROM @sql_str;
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
@@ -593,7 +584,6 @@ ALTER TABLE ptr ADD INDEX idx_ptr_test (stdf_id, test_num);
 ALTER TABLE ptr ADD INDEX idx_ptr_test_cond (stdf_id, test_num, cond_group_id);
 ALTER TABLE ptr ADD INDEX idx_ptr_test_site (stdf_id, test_num, site_num);
 ALTER TABLE ptr ADD INDEX idx_ptr_result (stdf_id, test_num, result);
-
 ALTER TABLE prr ADD INDEX idx_prr_bins (stdf_id, hard_bin, soft_bin);
 ALTER TABLE prr ADD INDEX idx_prr_xy (stdf_id, x_coord, y_coord);
 ALTER TABLE prr ADD INDEX idx_prr_part_id (stdf_id, part_id);
