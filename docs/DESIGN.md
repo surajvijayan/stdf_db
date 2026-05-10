@@ -38,6 +38,46 @@ The schema leverages both `InnoDB` for transactional metadata and (optionally) `
 - **Result Data**: `ptr` (Parametric Results), `ftr` (Functional Results), `tsr` (Synopsis).
 - **Normalization**: `cond_master` and `cond_group_master` manage the many-to-many relationship between tests and environmental variables.
 
+### 4.1 Detailed Table Structure
+The database schema includes the following tables, based on STDF record types:
+
+- **mir (Master Information Record)**: Stores lot-level metadata (e.g., setup time, lot ID, test program). Primary key `id`, with unique hash for duplicate detection.
+- **far (File Attributes Record)**: File format info (CPU type, STDF version).
+- **atr (Audit Trail Record)**: Modification logs.
+- **pir (Part Information Record)**: Part start markers, linked to MIR.
+- **mrr (Master Results Record)**: Lot completion data.
+- **pcr (Part Count Record)**: Aggregate counts per head/site.
+- **hbr/sbr (Hardware/Software Bin Records)**: Bin definitions.
+- **wir/wrr/wcr (Wafer Records)**: Wafer information and results.
+- **prr (Part Results Record)**: Individual part outcomes (hard/soft bins, coordinates).
+- **ptr (Parametric Test Result)**: Numeric test results, linked to PRR and condition groups.
+- **ftr (Functional Test Result)**: Pass/fail test results, linked to PRR and condition groups.
+- **tsr (Test Synopsis Record)**: Aggregated test statistics.
+- **dtr (Data Text Record)**: Free-form text data.
+- **stdf_files**: Tracks processed files.
+- **sdr (Site Description Record)**: Tester site configurations.
+- **pmr/pgr/plr (Pin Records)**: Pin mapping and groups.
+- **Condition Tables**: `cond_group_master`, `cond_master`, `cond_group` for normalizing environmental variables.
+
+All tables use `InnoDB` engine with `latin1` charset and case-sensitive collation for STDF compatibility. Foreign keys ensure referential integrity with CASCADE deletes.
+
+### 4.2 Stored Procedure: process_cond_group
+The `process_cond_group` stored procedure handles dynamic condition grouping for environmental variables extracted from DTR records. It takes a comma-separated string of key-value pairs (e.g., "temp=25,voltage=3.3") and returns a unique `cond_group_id`.
+
+#### Key Features:
+- **Parsing**: Splits input string, trims, and escapes values.
+- **Deduplication**: Checks existing groups via the `cond_view` (a view joining condition tables).
+- **Insertion**: Creates new master conditions and groups if not found.
+- **Performance**: Uses temporary memory tables and dynamic SQL for efficient set-based operations.
+- **Error Handling**: Rolls back on exceptions, cleans up temp tables.
+
+#### Usage:
+```sql
+CALL process_cond_group('temp=25,voltage=3.3', @group_id, @status);
+```
+
+This ensures conditions are normalized and linked to test results without redundant storage.
+
 ## 5. Development Utilities
 ### 5.1 `cond_simulate.cpp`
 A standalone sandbox utility used to validate regex patterns in `stdf_cond.cpp`. It allows developers to verify that new STDF logging formats are correctly parsed into canonical condition strings without requiring a full database or file system environment.

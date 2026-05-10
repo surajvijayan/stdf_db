@@ -2,7 +2,8 @@
 
 Developed by Suraj Vijayan
 
-Initial release.: Feb. 15th. 2020
+Initial release: Feb. 15th, 2020  
+Licensed under Apache License 2.0
 
 ## Overview
 `stdf_db` is an industrial-grade C++ utility engineered to ingest binary Standard Test Data Format (STDF) files into MySQL/MariaDB. It is optimized for high-throughput semiconductor manufacturing environments, utilizing parallel binary parsing and multi-row database batching to outperform standard commercial yield management systems.
@@ -33,10 +34,18 @@ A unique feature of this tool is its ability to parse **DTR (Data Text Records)*
 
 ## Dependencies
 - **libstdf:** Standard STDF parsing library (https://freestdf.sourceforge.io/doxygen/).
-- **MySQL Connector/C++:** (v1.1.x) For database interaction.
+- **MySQL Connector/C++:** v8.x (or later) for database interaction. Note: v1.1.x is deprecated.
 - **libconfig++:** For configuration file parsing.
 - **OpenSSL:** For SHA256 hashing functionality.
 - **Pthreads:** For multi-threaded orchestration.
+
+## Building
+The project uses a Makefile for compilation. Ensure dependencies are installed, then run:
+```bash
+cd src
+make
+```
+This builds the main `stdf_db` executable and the `cond_simulate` utility.
 
 ## Configuration (`.cfg`)
 Settings are managed via `stdf_db.cfg`, allowing for record skipping, test filtering, and thread limit adjustments.
@@ -64,3 +73,9 @@ The application implements comprehensive `try-catch` blocks for:
 - `libconfig::SettingNotFoundException`: Configuration errors.
 - `FileIOException`: STDF file access issues.
 In the event of a failure, threads attempt to `rollback()` the current transaction to ensure data integrity.
+
+## Contributing
+Contributions are welcome! Please submit issues or pull requests on the project repository. All contributions are licensed under Apache License 2.0.
+
+## License
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.

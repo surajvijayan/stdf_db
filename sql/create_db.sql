@@ -1,3 +1,17 @@
+-- Copyright 2020 Suraj Vijayan
+--
+-- Licensed under the Apache License, Version 2.0 (the "License");
+-- you may not use this file except in compliance with the License.
+-- You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing, software
+-- distributed under the License is distributed on an "AS IS" BASIS,
+-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-- See the License for the specific language governing permissions and
+-- limitations under the License.
+
 -- STDF Database Schema for MySQL/MariaDB
 -- Generated based on stdf_db application source code
 
@@ -410,7 +424,7 @@ CREATE TABLE IF NOT EXISTS cond_group (
   DEFAULT CHARACTER SET = latin1;
 
 -- Create a view to facilitate searching for existing groups
-DROP TABLE IF EXISTS `cond_view`;
+DROP VIEW IF EXISTS `cond_view`;
 CREATE OR REPLACE VIEW `cond_view` AS 
 SELECT
     `G`.`cond_group_id` AS `COND_GROUP_ID`,
