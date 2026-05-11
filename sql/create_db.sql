@@ -63,6 +63,24 @@ CREATE TABLE IF NOT EXISTS mir (
     INDEX idx_lot_id (lot_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
+DELIMITER $$
+CREATE TRIGGER `mir_AFTER_DELETE`
+AFTER DELETE ON `mir`
+FOR EACH ROW
+BEGIN
+    DELETE FROM `stdf_files` WHERE `stdf_id` = `OLD`.`id`;
+END$$
+
+CREATE TRIGGER `mir_AFTER_INSERT`
+AFTER INSERT ON `mir`
+FOR EACH ROW
+BEGIN
+    DECLARE m_test_code_id INT;
+    SELECT `id` INTO m_test_code_id FROM `test_code_master` WHERE `test_code` = NEW.`test_cod`;
+    INSERT INTO `stdf_files`(`stdf_id`,`test_code_id`) VALUES(NEW.`id`,m_test_code_id);
+END$$
+
+DELIMITER ;
 -- 2. File Attributes Record (FAR)
 CREATE TABLE IF NOT EXISTS far (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

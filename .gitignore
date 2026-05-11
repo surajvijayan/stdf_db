@@ -1,5 +1,6 @@
 *.o
 *.so
+configure.ac.local
 src/cond_simulate
 src/stdf_db
 

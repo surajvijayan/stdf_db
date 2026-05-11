@@ -1,18 +1,18 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Define to 1 if you have the 'config++' library (-lconfig++). */
+/* Define to 1 if you have the `config++' library (-lconfig++). */
 #undef HAVE_LIBCONFIG__
 
-/* Define to 1 if you have the 'crypto' library (-lcrypto). */
+/* Define to 1 if you have the `crypto' library (-lcrypto). */
 #undef HAVE_LIBCRYPTO
 
-/* Define to 1 if you have the 'mysqlcppconn' library (-lmysqlcppconn). */
+/* Define to 1 if you have the `mysqlcppconn' library (-lmysqlcppconn). */
 #undef HAVE_LIBMYSQLCPPCONN
 
-/* Define to 1 if you have the 'pthread' library (-lpthread). */
+/* Define to 1 if you have the `pthread' library (-lpthread). */
 #undef HAVE_LIBPTHREAD
 
-/* Define to 1 if you have the 'stdf' library (-lstdf). */
+/* Define to 1 if you have the `stdf' library (-lstdf). */
 #undef HAVE_LIBSTDF
 
 /* Name of package */
